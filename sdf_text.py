@@ -17,6 +17,7 @@ class SdfText:
         self.parent=None
         self.wrap=None
         self.frame=True
+        self.frame_tilt=0
         self.__center=True
         self.__pos=Vec3(0.0)
         self.__hpr=Vec3(0.0)
@@ -42,6 +43,36 @@ class SdfText:
             self.geom.flatten_light()
         if self.parent:
             self.geom.reparent_to(self.parent)
+        if self.frame:
+            min_point=Point3()
+            max_point=Point3()
+            self.geom.calc_tight_bounds(min_point,max_point)
+            #print(min_point,max_point)
+            if not min_point.almost_equal(Point3(0)) and not max_point.almost_equal(Point3(0)):
+                cm = CardMaker("card")
+                if self.frame_tilt:
+                    frame_size=(
+                            min(min(min_point[0], min_point[2]), -1.6),
+                            max(max(max_point[0], max_point[2]), 1.6),
+                            min(min(min_point[0], min_point[2]),-1.6),
+                            max(max(max_point[0], max_point[2]), 1.6)
+                            )
+                else:
+                    frame_size=(
+                            min(min_point[0]-0.4, -1.5),
+                            max(max_point[0]+0.4, 1.5),
+                            min(min_point[2]-0.4,-1.5),
+                            max(max_point[2]+0.4, 1.5)
+                            )                            
+                cm.set_frame(*frame_size)
+                center_node=self.geom.attach_new_node('frame')
+                frame= NodePath(cm.generate())
+                frame.reparent_to(self.geom)
+                frame.wrt_reparent_to(center_node)
+                frame.set_color(0,0,0, 1)        
+                center_node.set_hpr(0,0,self.frame_tilt)
+                center_node.flatten_light()
+        
         self.geom.set_pos_hpr_scale(self.__pos, self.__hpr, self.__scale)
 
 
@@ -53,17 +84,17 @@ class SdfText:
     def set_text(self, text):
         '''Sets text'''
         if self.wrap:
-            '''wrapped_text=''
+            wrapped_text=''
             pattern='{:^'+str(self.wrap)+'}\n'
             for line in wrap(text, self.wrap):
                 wrapped_text+=pattern.format(line)
             text=wrapped_text
-            print(text)'''
-            text="\n".join(wrap(text, self.wrap))
+            #print(text)
+            #text="\n".join(wrap(text, self.wrap))
         self.txt_node.set_text(text)
-        if self.frame:
-            self.txt_node.set_frame_color(self.__txt_color)
-            self.txt_node.set_frame_as_margin(0.5, 0.7, 0.5, 0.5)
+        #if self.frame:
+        #    self.txt_node.set_frame_color(self.__txt_color)
+        #    self.txt_node.set_frame_as_margin(0.5, 0.7, 0.5, 0.5)
         self._make_geom()
 
     def reparent_to(self, node):
