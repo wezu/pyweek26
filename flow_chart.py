@@ -3,8 +3,9 @@ from direct.interval.IntervalGlobal import *
 from sdf_text import SdfText
 
 class FlowChart:
-    def __init__(self, chart_dict, start_key):
-
+    def __init__(self, game, chart_dict, start_key):
+        self.game=game
+        
         clip = aspect2d.attach_new_node(PlaneNode("clip", Plane(Vec3(0, 0, -1), Point3(0, 0, -0.01))))
         aspect2d.set_clip_plane(clip)
 
@@ -117,18 +118,20 @@ class FlowChart:
         return lines
 
     def update(self):
+        can_move=self.game.can_move()
         self.left.set_text('left')
         self.left.set_pos(-1.0,0,-0.75)
 
         self.right.set_text('right')
         self.right.set_pos(1.0,0,-0.75)
-
-        self.top.set_text('up')
-        self.top.set_pos(0,0,-0.2)
-
+        
+        if can_move:
+            self.top.set_text('up')
+            self.top.set_pos(0,0,-0.2)
+            self.top_line=self.draw_vertical_line(self.top, self.center)
+        
         self.left_line=self.draw_horizontal_line(self.left, self.center)
         self.right_line=self.draw_horizontal_line(self.center, self.right)
-        self.top_line=self.draw_vertical_line(self.top, self.center)
         self.move_line.remove_node()
 
 
@@ -150,7 +153,8 @@ class FlowChart:
                     LerpPosInterval(self.right.geom, 0.7, (0,0,-2.5)),
                     LerpPosInterval(self.center.geom, 0.7, (0,0,-0.75))
                     )
-                )        
+                )
+        s.append(Wait(0.1))        
         s.append(Func(self.update))
         s.start()
 
@@ -174,7 +178,8 @@ class FlowChart:
                     LerpPosInterval(self.left.geom, 0.7, (0,0,-2.5)),
                     LerpPosInterval(self.center.geom, 0.7, (0,0,-0.75))
                     )
-                )        
+                )
+        s.append(Wait(0.1))        
         s.append(Func(self.update))
         s.start()
 
@@ -202,6 +207,7 @@ class FlowChart:
                     LerpPosInterval(self.center.geom, 0.7, (0,0,-0.75))
                     )
                 )
+        s.append(Wait(0.1))
         s.append(Func(self.update))
         s.start()
 

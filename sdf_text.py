@@ -46,8 +46,7 @@ class SdfText:
         if self.frame:
             min_point=Point3()
             max_point=Point3()
-            self.geom.calc_tight_bounds(min_point,max_point)
-            #print(min_point,max_point)
+            self.geom.calc_tight_bounds(min_point,max_point)            
             if not min_point.almost_equal(Point3(0)) and not max_point.almost_equal(Point3(0)):
                 cm = CardMaker("card")
                 if self.frame_tilt:
@@ -70,6 +69,24 @@ class SdfText:
                 frame.reparent_to(self.geom)
                 frame.wrt_reparent_to(center_node)
                 frame.set_color(0,0,0, 1)        
+                #draw lines
+                l=LineSegs()
+                l.set_color(Vec4(0.8, 0, 0, 1))
+                l.set_thickness(1.0)
+                #l.move_to(Point3(frame_size[0], 0, frame_size[2]))
+                #l.move_to(Point3(frame_size[0], 0, frame_size[1]))
+                ''' left, right, bottom, top
+                    0,3----1,3
+                    |      |
+                    |      |
+                    0,2---1,2
+                '''
+                l.move_to(Point3(frame_size[0], 0, frame_size[3]))                          
+                l.draw_to(Point3(frame_size[1], 0, frame_size[3]))                
+                l.draw_to(Point3(frame_size[1], 0, frame_size[2]))                
+                l.draw_to(Point3(frame_size[0], 0, frame_size[2]))                                
+                l.draw_to(Point3(frame_size[0], 0, frame_size[3]))
+                center_node.attach_new_node(l.create())               
                 center_node.set_hpr(0,0,self.frame_tilt)
                 center_node.flatten_light()
         

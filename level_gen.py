@@ -94,13 +94,15 @@ class Tileset():
     def all_exit_tile(self):
         return self.get_all_exit_tile()
 
-def make_quadtree(models, tiles, tile_scale=(10.0,10.0)):
+def make_quadtree(models):
     #find the size of the model
-    pos=list(tiles.keys())
-    x_max=max(pos,key=itemgetter(0))[0]*tile_scale[0]
-    x_min=min(pos,key=itemgetter(0))[0]*tile_scale[0]
-    y_max=max(pos,key=itemgetter(1))[1]*tile_scale[1]
-    y_min=min(pos,key=itemgetter(1))[1]*tile_scale[1]
+    min_point=Point3()
+    max_point=Point3()
+    models.calc_tight_bounds(min_point,max_point)            
+    x_min=min_point.x
+    x_max=max_point.x
+    y_min=min_point.y
+    y_max=max_point.y    
     x_size=x_max-x_min
     y_size=y_max-y_min
     #make a quad tree structure
@@ -154,18 +156,12 @@ def make_quadtree(models, tiles, tile_scale=(10.0,10.0)):
     return root
 
 def prev_tile(hpr, tile_id):    
-    h=round(hpr.x%360)//90
-    r=tile_id
-    if h==0:#0
-        r=(tile_id[0], tile_id[1]-1)
-    elif h==1:#90, -270
-        r=(tile_id[0]+1,tile_id[1])
-    elif h==2:#180     
-        r=(tile_id[0],tile_id[1]+1)
-    elif h==3:#270, -90    
-        r=(tile_id[0]-1,tile_id[1])
-    #print(tile_id, hpr, h, r)    
-    return r
+    h=(round(hpr.x)%360)//90
+    return( (tile_id[0],tile_id[1]-1),
+            (tile_id[0]+1,tile_id[1]),
+            (tile_id[0],tile_id[1]+1),
+            (tile_id[0]-1,tile_id[1]) )[h]        
+
     
 def generate_level(tileset, num_tiles, seed=None, grid=None):
     if seed:
@@ -192,15 +188,19 @@ def generate_level(tileset, num_tiles, seed=None, grid=None):
             if grid.is_free(pos):
                 model=tileset.tile.copy_to(root)
                 model.set_pos_hpr(pos, hpr)
-                tile_id=(round(pos[0]*0.1),round(pos[1]*0.1))                
-                tiles[tile_id]=[]
+                tile_id=(round(pos[0]*0.1),round(pos[1]*0.1))           
                 prev_tile_id=prev_tile(hpr, tile_id)                          
-                tiles[prev_tile_id].append(tile_id)   
+                #if prev_tile_id not in tiles:
+                #    tiles[prev_tile_id]=[]
+                if tile_id not in tiles:
+                    tiles[tile_id]=[]   
+                tiles[tile_id].append(prev_tile_id)            
                 grid.add(pos)
             else:
                 model=tileset.wall.copy_to(root)
                 model.set_pos_hpr(pos, hpr)
         else:
+            print('corner case')
             #no connection found, remove corner and put a all exit tile there
             pos=list(tiles.keys())
             corners=[max(pos,key=itemgetter(0)), min(pos,key=itemgetter(0)),
@@ -212,8 +212,17 @@ def generate_level(tileset, num_tiles, seed=None, grid=None):
             model=tileset.all_exit_tile.copy_to(root)
             model.set_pos_hpr(pos, hpr)
             tile_id=(round(pos[0]*0.1),round(pos[1]*0.1))
-            tiles[tile_id]=[]
-            tiles[prev_tile(hpr, tile_id)].append(tile_id)                                
+            prev_tile_id=prev_tile(hpr, tile_id)                          
+            if prev_tile_id not in tiles:
+                tiles[prev_tile_id]=[]
+            if tile_id not in tiles:
+                tiles[tile_id]=[]   
+            tiles[tile_id].append(prev_tile_id)            
+            tiles[prev_tile_id].append(tile_id)
+            debug[tile_id]=(model.get_name(),' removed corner')
+                    
+            #tiles[prev_tile_id].append(tile_id)                   
+            #tiles[prev_tile(hpr, tile_id)].append(tile_id)                                
     #close all connections that have no tiles
     # print ('Adding walls')
     for connection in root.find_all_matches('**/connect'):
@@ -226,16 +235,23 @@ def generate_level(tileset, num_tiles, seed=None, grid=None):
     #print ('Removing walls')
     walls={}
     for node in root.find_all_matches('**/wall'):
-        pos=render.get_relative_point(node, (0,-5, 0))
-        pos=(round(pos[0]),round(pos[1]),round(pos[2]))
+        pos=render.get_relative_point(node, (0,-5, 0))        
+        pos=(round(pos[0]),round(pos[1]))
+        hpr=node.get_hpr(render)
         if pos in walls:
+            map_pos=(round(node.get_x(render)*0.1),round(node.get_y(render)*0.1))                           
+            prev_id=prev_tile(hpr, map_pos)
+            if prev_id in tiles:
+                tiles[prev_id].append(map_pos)
+            #else:
+            #    print('error')
             node.get_parent().remove_node()
-            walls[pos].get_parent().remove_node()
+            walls[pos].get_parent().remove_node()            
         else:
             walls[pos]=node
 
     #root.ls()
     print('optimizing...')
-    return make_quadtree(root, tiles)
+    return make_quadtree(root), tiles
     #root.flatten_strong()
     #return root
