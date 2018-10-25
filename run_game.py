@@ -2,7 +2,7 @@ from panda3d.core import *
 load_prc_file_data("", "sync-video 0")
 load_prc_file_data("", "show-frame-rate-meter  1")
 load_prc_file_data("", "default-model-extension .bam")
-#load_prc_file_data("", "win-size 1280 720")
+load_prc_file_data("", "win-size 1280 720")
 from direct.showbase.ShowBase import ShowBase
 from direct.interval.IntervalGlobal import *
 from direct.gui.OnscreenImage import OnscreenImage
@@ -12,6 +12,12 @@ import random
 from flow_chart import FlowChart
 from sdf_text import SdfText
 import level_gen
+
+#set the window decoration before we start
+wp = WindowProperties.getDefault()
+wp.set_title("Chart of Flowrock, PyWeek 26  wezu.dev@gmail.com")
+wp.set_icon_filename('texture/icon.ico')
+WindowProperties.setDefault(wp)
 
 class Game(ShowBase):
     def __init__(self):
