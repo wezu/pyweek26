@@ -51,10 +51,10 @@ class SdfText:
                 cm = CardMaker("card")
                 if self.frame_tilt:
                     frame_size=(
-                            min(min(min_point[0], min_point[2]), -1.6),
-                            max(max(max_point[0], max_point[2]), 1.6),
-                            min(min(min_point[0], min_point[2]),-1.6),
-                            max(max(max_point[0], max_point[2]), 1.6)
+                            min(min(min_point[0], min_point[2])-0.4, -1.6),
+                            max(max(max_point[0], max_point[2])+0.4, 1.6),
+                            min(min(min_point[0], min_point[2])-0.4,-1.6),
+                            max(max(max_point[0], max_point[2])+0.4, 1.6)
                             )
                 else:
                     frame_size=(
@@ -96,19 +96,28 @@ class SdfText:
 
     def set_center(self, center=True):
         self.__center=center
+        if center:
+            self.txt_node.set_align(TextNode.A_center)
+        else:    
+            self.txt_node.set_align(TextNode.A_left)
         self._make_geom()
 
     def set_text(self, text):
         '''Sets text'''
         if self.wrap:
-            wrapped_text=''
+            '''wrapped_text=''
             pattern='{:^'+str(self.wrap)+'}\n'
             for line in wrap(text, self.wrap):
                 wrapped_text+=pattern.format(line)
             text=wrapped_text
-            #print(text)
-            #text="\n".join(wrap(text, self.wrap))
+            #print(text)'''
+            text="\n".join(wrap(text, self.wrap))
         self.txt_node.set_text(text)
+        if self.__center:
+            self.txt_node.set_align(TextNode.A_center)
+        else:    
+            self.txt_node.set_align(TextNode.A_left)
+        
         #if self.frame:
         #    self.txt_node.set_frame_color(self.__txt_color)
         #    self.txt_node.set_frame_as_margin(0.5, 0.7, 0.5, 0.5)

@@ -3,16 +3,18 @@ from direct.interval.IntervalGlobal import *
 from sdf_text import SdfText
 
 class FlowChart:
-    def __init__(self, game, chart_dict, start_key):
+    def __init__(self, game):
         self.game=game
-        
+
         clip = aspect2d.attach_new_node(PlaneNode("clip", Plane(Vec3(0, 0, -1), Point3(0, 0, -0.01))))
         aspect2d.set_clip_plane(clip)
 
 
         self.font=loader.load_font('font/mono_font.egg')
 
-        self.chart_dict=chart_dict
+        center_txt='???'
+        if self.game.current_chart:
+            center_txt=self.game.current_chart[self.game.current_chart_node]['txt']
 
         self.center=SdfText(self.font)
         self.center.wrap=30
@@ -20,13 +22,13 @@ class FlowChart:
         self.center.set_outline_color((0, 0, 0, 1))
         self.center.set_outline_strength(1.0)
         #self.center.set_text('center')
-        self.center.set_text('Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco.')
+        self.center.set_text(center_txt)
         self.center.reparent_to(aspect2d)
         self.center.set_pos(0,0,-0.75)
         self.center.set_scale(0.05)
 
         self.left=SdfText(self.font)
-        self.left.wrap=20
+        self.left.wrap=8
         self.left.frame_tilt=45
         self.left.set_text_color((0.8, 0, 0, 1))
         self.left.set_outline_color((0.6, 0, 0, 1))
@@ -37,8 +39,8 @@ class FlowChart:
         self.left.set_scale(0.05)
 
         self.right=SdfText(self.font)
-        self.right.wrap=20
-        self.right.frame_tilt=45        
+        self.right.wrap=8
+        self.right.frame_tilt=45
         self.right.set_text_color((0.8, 0, 0, 1))
         self.right.set_outline_color((0.6, 0, 0, 1))
         self.right.set_outline_strength(0.5)
@@ -49,8 +51,8 @@ class FlowChart:
 
 
         self.top=SdfText(self.font)
-        self.top.wrap=20
-        self.top.frame_tilt=45        
+        self.top.wrap=8
+        self.top.frame_tilt=45
         self.top.set_text_color((0.8, 0, 0, 1))
         self.top.set_outline_color((0.6, 0, 0, 1))
         self.top.set_outline_strength(0.5)
@@ -75,14 +77,14 @@ class FlowChart:
         bottom.geom.calc_tight_bounds(bottom_min_point, bottom_max_point)
 
         lines=aspect2d.attach_new_node('line')
-        
+
         l=LineSegs()
         l.set_color(Vec4(0, 0, 0, 1))
         l.set_thickness(5.0)
         l.move_to(Point3(top.pos.x, 0, top_min_point.z))
         l.draw_to(Point3(top.pos.x, 0, bottom_max_point.z))
         lines.attach_new_node(l.create())
-        
+
         l=LineSegs()
         l.set_color(Vec4(0.8, 0, 0, 1))
         l.set_thickness(1.0)
@@ -101,42 +103,61 @@ class FlowChart:
         right.geom.calc_tight_bounds(right_min_point, right_max_point)
 
         lines=aspect2d.attach_new_node('line')
-        
+
         l=LineSegs()
         l.set_color(Vec4(0, 0, 0, 1))
         l.set_thickness(5.0)
         l.move_to(Point3(left_max_point.x-0.01,0,left.pos.z))
         l.draw_to(Point3(right_min_point.x+0.01,0,left.pos.z))
         lines.attach_new_node(l.create())
-        
+
         l=LineSegs()
         l.set_color(Vec4(0.8, 0, 0, 1))
         l.set_thickness(1.0)
         l.move_to(Point3(left_max_point.x,0,left.pos.z))
         l.draw_to(Point3(right_min_point.x,0,left.pos.z))
-        lines.attach_new_node(l.create())               
+        lines.attach_new_node(l.create())
         return lines
 
     def update(self):
+        try:
+            self.left_line.remove_node()
+            self.right_line.remove_node()
+            self.top_line.remove_node()
+        except:
+            print("fu?")
         can_move=self.game.can_move()
-        self.left.set_text('left')
-        self.left.set_pos(-1.0,0,-0.75)
+        left_txt=self.game.get_left_text()
+        if left_txt is not None:
+            self.left.set_text(left_txt)
+            self.left.set_pos(-1.0,0,-0.75)
+            self.left_line=self.draw_horizontal_line(self.left, self.center)
+        else:
+            self.left.geom.hide()
 
-        self.right.set_text('right')
-        self.right.set_pos(1.0,0,-0.75)
-        
-        if can_move:
-            self.top.set_text('up')
-            self.top.set_pos(0,0,-0.2)
-            self.top_line=self.draw_vertical_line(self.top, self.center)
-        
-        self.left_line=self.draw_horizontal_line(self.left, self.center)
-        self.right_line=self.draw_horizontal_line(self.center, self.right)
-        self.move_line.remove_node()
+        right_txt=self.game.get_right_text()
+        if right_txt is not None:
+            self.right.set_text(right_txt)
+            self.right.set_pos(1.0,0,-0.75)
+            self.right_line=self.draw_horizontal_line(self.center, self.right)
+        else:
+            self.right.geom.hide()
+
+        up_text=self.game.get_up_text()
+        if up_text is not None:
+            if can_move:
+                self.top.set_text(up_text)
+                self.top.set_pos(0,0,-0.2)
+                self.top_line=self.draw_vertical_line(self.top, self.center)
+        else:
+            self.top.geom.hide()
+
+        if self.move_line:
+            self.move_line.remove_node()
 
 
     def move_right(self):
-        self.center.set_text('You moved right.')
+        self.center.set_text(self.game.get_forward_text(-1))
         self.center.geom.set_pos(0, 0, 1)
         self.top.geom.hide()
         self.left.geom.hide()
@@ -154,13 +175,13 @@ class FlowChart:
                     LerpPosInterval(self.center.geom, 0.7, (0,0,-0.75))
                     )
                 )
-        s.append(Wait(0.1))        
+        s.append(Wait(0.1))
         s.append(Func(self.update))
         s.start()
 
 
     def move_left(self):
-        self.center.set_text('You moved left')
+        self.center.set_text(self.game.get_forward_text(1))
         self.center.geom.set_pos(0, 0, 1)
         self.top.geom.hide()
         self.right.geom.hide()
@@ -179,12 +200,12 @@ class FlowChart:
                     LerpPosInterval(self.center.geom, 0.7, (0,0,-0.75))
                     )
                 )
-        s.append(Wait(0.1))        
+        s.append(Wait(0.1))
         s.append(Func(self.update))
         s.start()
 
     def move_up(self):
-        self.center.set_text('You moved forward')
+        self.center.set_text(self.game.get_forward_text(0,2))
         self.center.geom.set_pos(0, 0, 1)
         self.left.geom.hide()
         self.right.geom.hide()
