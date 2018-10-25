@@ -10,7 +10,7 @@ class FlowChart:
         aspect2d.set_clip_plane(clip)
 
 
-        self.font=loader.load_font('font/mono_font.egg')
+        self.font=game.font
 
         center_txt='???'
         if self.game.current_chart:
@@ -38,6 +38,16 @@ class FlowChart:
         self.left.set_pos(-1.0,0,-0.75)
         self.left.set_scale(0.05)
 
+        self.left_lable=SdfText(self.font)
+        self.left_lable.frame=False
+        self.left_lable.set_text_color((0.8, 0, 0, 1))
+        self.left_lable.set_outline_color((0.0, 0, 0, 1))
+        self.left_lable.set_outline_strength(2.0)
+        self.left_lable.set_text('A')
+        self.left_lable.reparent_to(aspect2d)
+        self.left_lable.set_pos(-0.65,0,-0.715)
+        self.left_lable.set_scale(0.07)
+
         self.right=SdfText(self.font)
         self.right.wrap=8
         self.right.frame_tilt=45
@@ -48,6 +58,16 @@ class FlowChart:
         self.right.reparent_to(aspect2d)
         self.right.set_pos(1.0,0,-0.75)
         self.right.set_scale(0.05)
+
+        self.right_lable=SdfText(self.font)
+        self.right_lable.frame=False
+        self.right_lable.set_text_color((0.8, 0, 0, 1))
+        self.right_lable.set_outline_color((0.0, 0, 0, 1))
+        self.right_lable.set_outline_strength(2.0)
+        self.right_lable.set_text('D')
+        self.right_lable.reparent_to(aspect2d)
+        self.right_lable.set_pos(0.65,0,-0.715)
+        self.right_lable.set_scale(0.07)
 
 
         self.top=SdfText(self.font)
@@ -61,11 +81,25 @@ class FlowChart:
         self.top.set_pos(0,0,-0.2)
         self.top.set_scale(0.05)
 
+        self.top_lable=SdfText(self.font)
+        self.top_lable.frame=False
+        self.top_lable.set_text_color((0.8, 0, 0, 1))
+        self.top_lable.set_outline_color((0.0, 0, 0, 1))
+        self.top_lable.set_outline_strength(2.0)
+        self.top_lable.set_text('W')
+        self.top_lable.reparent_to(aspect2d)
+        self.top_lable.set_pos(0.05,0,-0.45)
+        self.top_lable.set_scale(0.07)
+
 
         self.left_line=self.draw_horizontal_line(self.left, self.center)
         self.right_line=self.draw_horizontal_line(self.center, self.right)
         self.top_line=self.draw_vertical_line(self.top, self.center)
         self.move_line=None
+
+        self.top_lable.geom.hide()
+        self.left_lable.geom.hide()
+        self.right_lable.geom.hide()
 
     def draw_vertical_line(self, top, bottom):
         top_min_point=Point3()
@@ -129,6 +163,7 @@ class FlowChart:
         can_move=self.game.can_move()
         left_txt=self.game.get_left_text()
         if left_txt is not None:
+            self.left_lable.geom.show()
             self.left.set_text(left_txt)
             self.left.set_pos(-1.0,0,-0.75)
             self.left_line=self.draw_horizontal_line(self.left, self.center)
@@ -137,6 +172,7 @@ class FlowChart:
 
         right_txt=self.game.get_right_text()
         if right_txt is not None:
+            self.right_lable.geom.show()
             self.right.set_text(right_txt)
             self.right.set_pos(1.0,0,-0.75)
             self.right_line=self.draw_horizontal_line(self.center, self.right)
@@ -146,6 +182,7 @@ class FlowChart:
         up_text=self.game.get_up_text()
         if up_text is not None:
             if can_move:
+                self.top_lable.geom.show()
                 self.top.set_text(up_text)
                 self.top.set_pos(0,0,-0.2)
                 self.top_line=self.draw_vertical_line(self.top, self.center)
@@ -157,6 +194,9 @@ class FlowChart:
 
 
     def move_right(self):
+        self.top_lable.geom.hide()
+        self.left_lable.geom.hide()
+        self.right_lable.geom.hide()
         self.center.set_text(self.game.get_forward_text(-1))
         self.center.geom.set_pos(0, 0, 1)
         self.top.geom.hide()
@@ -181,6 +221,9 @@ class FlowChart:
 
 
     def move_left(self):
+        self.top_lable.geom.hide()
+        self.left_lable.geom.hide()
+        self.right_lable.geom.hide()
         self.center.set_text(self.game.get_forward_text(1))
         self.center.geom.set_pos(0, 0, 1)
         self.top.geom.hide()
@@ -205,6 +248,9 @@ class FlowChart:
         s.start()
 
     def move_up(self):
+        self.top_lable.geom.hide()
+        self.left_lable.geom.hide()
+        self.right_lable.geom.hide()
         self.center.set_text(self.game.get_forward_text(0,2))
         self.center.geom.set_pos(0, 0, 1)
         self.left.geom.hide()
