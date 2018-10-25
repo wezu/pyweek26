@@ -73,7 +73,9 @@ class Game(ShowBase):
                             'inst_6':{'txt':'Listen.',
                                         'left':('No', 'inst_7',self.troll),
                                         'right':('Ok...', 'play',None)},
-                            'inst_7':{'txt':'I hate you.'},
+                            'inst_7':{'txt':'I hate you.',
+                                      'left':('Troll', 'inst_7',None),
+                                       'right':('lolol', 'inst_7',None)},
                             'inst_8':{'txt':'Wait, What?',
                                         'up':('What?', 'start',None)},
                             'inst_9':{'txt':'But you just followed them twice!',
@@ -137,13 +139,20 @@ class Game(ShowBase):
         if x < 512:
             img=loader.load_texture('texture/troll_small.png')
             scale=(256, 0, 128)#img size//2
-            troll_img = OnscreenImage(image = img, scale=scale, pos = (x, 0, -y+128), parent=pixel2d)
+            troll_img = OnscreenImage(image = img, scale=scale, pos = (x, 0, -y+64), parent=pixel2d)
             troll_img.set_transparency(TransparencyAttrib.M_alpha)
         else:
             img=loader.load_texture('texture/troll_big.png')
             scale=(512, 0, 256)#img size//2
             troll_img = OnscreenImage(image = img, scale=scale, pos = (x, 0, -y+64), parent=pixel2d)
             troll_img.set_transparency(TransparencyAttrib.M_alpha)
+
+        s=Sequence()
+        s.append(LerpPosHprInterval(troll_img, 2.0, (x, 0, -y), (0, 0, 20)))
+        s.append(LerpPosHprInterval(troll_img, 3.0, (x+150, 0, -y-100), (0, 0, -60)))
+        s.append(LerpPosHprInterval(troll_img, 4.0, (x-100, 0, -y+100), (0, 0, 60)))
+        s.append(LerpPosHprInterval(troll_img, 1.0, (x, 0, -y+64), (0, 0, 0)))
+        s.loop()
 
     def set_loading_txt(self, txt):
         if txt:
