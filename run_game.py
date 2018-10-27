@@ -135,7 +135,11 @@ class Game(ShowBase):
                                         'up':('OK', 'start', None)
                                         },
                             'result':{'txt':'inser text',
-                                    'up':('OK.','zombie_turn',self.zombie_turn )}
+                                    'up':('OK.','zombie_turn',self.zombie_turn )},
+                            'die':{'txt':'You died.',
+                                   'up':('OK.','die',None)},
+                            'win':{'txt':'The zombie is dead... even more dead.',
+                                   'up':('OK.','win',self.end_combat)},
                            }
 
         self.current_chart=self.tutorial_chart
@@ -166,7 +170,7 @@ class Game(ShowBase):
                                 (True, True, True):('You came to a junction',)
                                 }
 
-        print('loading tiles...')
+        #print('loading tiles...')
         self.set_loading_txt('Loading actors...')
 
         #self.zombie=loader.load_model('actor/m_zombie',)
@@ -213,12 +217,12 @@ class Game(ShowBase):
         self.tileset.add_tile('w_0', 5)
         self.tileset.add_tile('n_0', 20)
         self.tileset.add_wall('wall')
-        print('building level...')
+        #print('building level...')
         self.set_loading_txt('Building level...')
         self.level, self.map = level_gen.generate_level(self.tileset, num_tiles=250, seed=33)
         #self.level.reparent_to(render)
         #self.level.analyze()
-        print('ready!')
+        #print('ready!')
         self.set_loading_txt('Loading music...')
         self.menu_music=loader.load_music('music/violin_drums.ogg')
         self.menu_music.set_loop(True)
@@ -237,6 +241,7 @@ class Game(ShowBase):
                      'stab':loader.load_sfx('sound/stab.ogg'),
                      'stab_hit':loader.load_sfx('sound/stab-hit.ogg'),
                      'slash':loader.load_sfx('sound/slash-hit.ogg'),
+                     'die':loader.load_sfx('sound/die.ogg'),
                     }
         self.set_loading_txt('')
 
@@ -246,7 +251,8 @@ class Game(ShowBase):
         self.chart=FlowChart(self)
         self.chart.update()
         self.menu_music.play()
-
+        self.hp=1.0
+        self.zombie_hp=1.0
 
         #print(self.map)
         self.zombie_map=set()
@@ -256,7 +262,7 @@ class Game(ShowBase):
             if (x,y) in self.map:
                 for (z,w) in ((x,y+1), (x,y-1), (x+1,y), (x-1,y)):
                     if (z,w) in self.map and (z,w)!=(x,y) and (z,w)!=(0,0):
-                        print(z,w, ' zombie can go here!')
+                        #print(z,w, ' zombie can go here!')
                         self.zombie.set_pos(z*10, w*10, 0)
                         self.zombie_map.add((z,w))
                         break
@@ -265,7 +271,45 @@ class Game(ShowBase):
         self.accept('9',aspect2d.hide)
         self.accept('0',aspect2d.show)
 
+    def end_combat(self):
+        #print('end combat')
+        self.hp=1.0
+        self.set_hp()
+
+        pos=base.camera.get_pos(render)
+        heading=base.camera.get_h()
+        h=(round(heading)%360)//90
+        map_pos=(int(round(pos.x*0.1)), int(round(pos.y*0.1)))
+        #print(pos, map_pos, forward_pos)
+        self.current_chart=None
+
+        self.zombie_map.discard(map_pos)
+
+        LerpPosInterval(base.camera, 0.5, (map_pos[0]*10, map_pos[1]*10, pos.z)).start()
+
+    def set_hp(self, value=0.0):
+        self.hp+=value
+        #print(self.hp)
+        if self.hp <=0.01:
+           self.hp =0.0
+           self.sounds['die'].play()
+           #print('You died')
+           self.current_chart_node='die'
+           pos=base.camera.get_pos(render)
+           pos.z=0.2
+           hpr=base.camera.get_hpr(render)
+           hpr.z=-90
+           LerpPosHprInterval(base.camera, 2.0, pos, hpr).start()
+           self.sword.hide()
+        deferred_renderer.set_filter_input('pre_aa','health', self.hp)
+
     def zombie_turn(self):
+        if self.zombie_hp <= 0.01:
+            self.zombi_anim('die', hold=True)
+            self.current_chart_node='win'
+            self.combat_chart['zombie_turn']['txt']='The zombie falls on its back.'
+            return
+
         if self.zombi_state == 'recover':
             self.zombi_anim('idle')
             self.combat_chart['zombie_turn']['txt']='After your attack the zombie takes no action.'
@@ -279,8 +323,10 @@ class Game(ShowBase):
                 self.sword_anim('block', 0.1)
                 self.block=False
                 self.combat_chart['zombie_turn']['txt']='The zombie attacks, you try to block, but the attack is just too powerful - it still hurts.'
+                Sequence(Wait(0.4), Func(self.set_hp, -0.1)).start()
             else:
                 self.combat_chart['zombie_turn']['txt']='The zombie delivers a powerful attacks. It hurts!'
+                Sequence(Wait(0.4), Func(self.set_hp, -0.3)).start()
             self.zombi_state = 'idle'
             return
 
@@ -299,6 +345,7 @@ class Game(ShowBase):
             else:
                 self.sounds['zombie_attack_hit'].play()
                 self.combat_chart['zombie_turn']['txt']='The zombie attacks!'
+                Sequence(Wait(0.65), Func(self.set_hp, -0.2)).start()
         else: #idle
             self.zombi_anim('idle')
             self.combat_chart['zombie_turn']['txt']='The zombie takes no action.'
@@ -313,10 +360,13 @@ class Game(ShowBase):
             self.zombi_anim('strike')
             self.combat_chart['result']['txt']="You stabbed the zombie, but that did not stop the zombies attack!"
             self.zombi_state = 'recover'
+            Sequence(Wait(0.4), Func(self.set_hp, -0.2)).start()
+            self.zombie_hp-=0.1
         else:
             self.sounds['stab_hit'].play()
             self.zombi_anim('stabbed', 0.2)
             self.combat_chart['result']['txt']='You stabbed the zombie! It is not happy.'
+            self.zombie_hp-=0.2
 
     def slash(self):
         self.block=False
@@ -326,6 +376,7 @@ class Game(ShowBase):
             self.zombi_anim('interrupt', 0.8)
             self.sounds['slash'].play()
             self.combat_chart['result']['txt']="You strike the zombie knocking it off balance!"
+            self.zombie_hp-=0.2
             self.zombi_state = 'recover'
         elif self.zombi_state == 'idle':
             self.sounds['block'].play()
@@ -334,6 +385,7 @@ class Game(ShowBase):
         else:
             self.zombi_anim('interrupt')
             self.combat_chart['result']['txt']='You strike the zombie'
+            self.zombie_hp-=0.1
 
     def block(self):
         self.block=True
@@ -638,11 +690,12 @@ class Game(ShowBase):
                         )[h]
                 s=Sequence()
                 if forward_pos in self.zombie_map:
+                    self.zombie_hp=1.0
                     self.current_chart=self.combat_chart
                     self.current_chart_node='start'
                     quat=Quat()
                     quat.set_hpr((-heading,0, 0))
-                    head_sequence=Sequence(LerpHprInterval(base.camera, 0.5, (heading,0, 0)),
+                    head_sequence=Sequence(LerpHprInterval(base.camera, 0.5, (heading,-3, 0)),
                                        LerpHprInterval(base.camera, 0.5, (heading,-5,0)))
                     move_sequence=Sequence()
                     for i in range(5):
@@ -655,7 +708,7 @@ class Game(ShowBase):
                         move_sequence.append(LerpPosInterval(base.camera, 0.2, pos+Point3(x*0.6*(i+1), y*0.6*(i+1), z)))
                     s.append(Parallel(head_sequence, move_sequence, LerpQuatInterval(self.zombie, 0.5, quat)))
                 else:
-                    head_sequence=Sequence(LerpHprInterval(base.camera, 0.5, (heading,0, 0)),
+                    head_sequence=Sequence(LerpHprInterval(base.camera, 0.5, (heading,-3, 0)),
                                            LerpHprInterval(base.camera, 0.5, (heading,-5,0)))
                     move_sequence=Sequence()
                     for i in range(5):

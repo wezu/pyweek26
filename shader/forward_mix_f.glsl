@@ -3,6 +3,7 @@
 in vec2 uv;
 uniform sampler2D forward_tex;
 uniform sampler2D input_tex;
+uniform float health;
 #ifndef DISABLE_LUT
 uniform sampler2D lut_tex;
 #endif
@@ -36,6 +37,10 @@ void main()
     #endif
 
     vec3 final_color=mix(color_deferred.rgb, color_forward.rgb, color_forward.a);
+
+    float blood_factor=distance(uv, vec2(0.5, 0.5));
+
+    final_color=mix(final_color, vec3(0.8, 0.0, 0.0), blood_factor*(1.0-health));
 
     gl_FragData[0]=vec4(final_color.rgb, 1.0);
     }
