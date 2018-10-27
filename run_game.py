@@ -16,6 +16,7 @@ from flow_chart import FlowChart
 from sdf_text import SdfText
 import level_gen
 from deferred_render import *
+from vfx import Vfx
 from options import Options
 
 #set the window decoration before we start
@@ -141,6 +142,20 @@ class Game(ShowBase):
                             'win':{'txt':'The zombie is dead... even more dead.',
                                    'up':('OK.','win',self.end_combat)},
                            }
+        self.end_game_chart={ 'start':{'txt':'As the last zombie dies a bright light appears in front of you.',
+                               'up':('Next', 'txt1', None)},
+                              'txt1':{'txt':'You realize it is a portal identical to the one that brought you into this dungeon.',
+                               'up':('Next', 'txt2', None)},
+                              'txt2':{'txt':'You take a hesitant step forward, dreading what horrors might await on the other side...',
+                               'up':('Next', 'txt3', None)},
+                              'txt3':{'txt':'...but then again, could there be anything worst then this place?',
+                                    'right':('Go in', 'txt4', None),
+                                    'left':('Step back', 'txt5', None)},
+                              'txt4':{'txt':'You step into the portal... but that is a story for another PyWeek\nGAME OVER',
+                                     'up':('End', 'txt4', self.game_over)},
+                              'txt5':{'txt':'The portal vanishes. You are alone. You sword is your only exit...\nGAME OVER ',
+                                      'up':('End', 'txt5', self.bad_end)}
+                            }
 
         self.current_chart=self.tutorial_chart
         self.current_chart_node='start'
@@ -289,8 +304,29 @@ class Game(ShowBase):
         self.menu_music.play()
 
         self.accept('tab', base.bufferViewer.toggleEnable)
+        self.accept('1',self.test_vfx)
         self.accept('9',aspect2d.hide)
         self.accept('0',aspect2d.show)
+
+    def game_over(self):
+        self.key_lock=1
+        aspect2d.hide()
+        self.zombie.hide()
+        self.level.hide()
+        self.sword.hide()
+        vfx_pos=render.get_relative_point(base.camera, (0, 9, 1.0))
+        LerpPosInterval(base.camera, 0.5, vfx_pos).start()
+
+    def bad_end(self):
+        self.vfx.remove()
+        if not self.potato_mode:
+            del self.vfx_light
+        self.current_chart=None
+
+    def test_vfx(self):
+        self.vfx=Vfx('texture/vfx_portal.png', True, 30, 256)
+        self.vfx.set_pos((0, 0, 1.2))
+        self.vfx.set_scale(8)
 
 
     def make_zombie(self, map_pos):
@@ -327,13 +363,25 @@ class Game(ShowBase):
         heading=base.camera.get_h()
         h=(round(heading)%360)//90
         map_pos=(int(round(pos.x*0.1)), int(round(pos.y*0.1)))
-        #print(pos, map_pos, forward_pos)
+
         self.current_chart=None
 
         del self.zombie_map[map_pos]
-        print(len(self.zombie_map))
 
-        LerpPosInterval(base.camera, 0.5, (map_pos[0]*10, map_pos[1]*10, pos.z)).start()
+        if len(self.zombie_map)<1:
+            self.game_music.stop()
+            self.menu_music.play()
+            self.vfx=Vfx('texture/vfx_portal.png', True, 30, 256)
+            vfx_pos=render.get_relative_point(base.camera, (0, 10, 0.8))
+            self.vfx.set_pos(vfx_pos)
+            self.vfx.set_scale(7.5)
+            self.current_chart=self.end_game_chart
+            self.current_chart_node='start'
+            if not self.potato_mode:
+                light_pos=render.get_relative_point(base.camera, (0, 10, 0.5))
+                self.vfx_light = SphereLight(color=(0.33,0.24,0.95), pos=(light_pos), radius=20.0, shadow_size=0, shadow_bias=0.0035)
+        else:
+            LerpPosInterval(base.camera, 0.5, (map_pos[0]*10, map_pos[1]*10, pos.z)).start()
 
     def set_hp(self, value=0.0):
         self.hp+=value
@@ -740,7 +788,8 @@ class Game(ShowBase):
                 s=Sequence()
                 if forward_pos in self.zombie_map:
                     self.zombie=self.zombie_map[forward_pos]
-                    self.zombie_hp=.1
+                    self.zombie_hp=1.0
+                    self.zombi_state = 'ready'
                     self.current_chart=self.combat_chart
                     self.current_chart_node='start'
                     temp=render.attach_new_node('temp')
