@@ -1,17 +1,22 @@
 from panda3d.core import *
-load_prc_file_data("", "sync-video 0")
-load_prc_file_data("", "show-frame-rate-meter  1")
+load_prc_file('options.prc')
+load_prc_file_data('','framebuffer-srgb 0')
+load_prc_file_data('','textures-power-2 None')
 load_prc_file_data("", "default-model-extension .bam")
-load_prc_file_data("", "win-size 1280 720")
+
 from direct.showbase.ShowBase import ShowBase
 from direct.interval.IntervalGlobal import *
 from direct.gui.OnscreenImage import OnscreenImage
+from direct.actor.Actor import Actor
 
 import random
+import builtins
 
 from flow_chart import FlowChart
 from sdf_text import SdfText
 import level_gen
+from deferred_render import *
+from options import Options
 
 #set the window decoration before we start
 wp = WindowProperties.getDefault()
@@ -23,12 +28,24 @@ class Game(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
         base.set_background_color(0, 0, 0)
-        base.camLens.set_near_far(0.1, 50.0)
+        #base.camLens.set_near_far(0.1, 50.0)
         base.disable_mouse()
-        base.camera.set_pos(10,0, 2.0)
-        base.camera.set_hpr(90,0, 0)
+        base.camera.set_pos(10,0, 1.8)
+        base.camera.set_hpr(90,-5, 0)
+        self.potato_mode=ConfigVariableBool('potato-mode', False).get_value()
 
-        self.font=loader.load_font('font/mono_font.egg')
+        if not self.potato_mode:
+            options=Options('presets/minimal.ini')
+            DeferredRenderer(**options.get())
+            #set some other options...
+            deferred_renderer.set_near_far(0.01,50.0)
+            deferred_renderer.set_cubemap('texture/cube/sky_#.png')
+        else:
+            base.camLens.set_near_far(0.01, 50.0)
+            deferred_render=render
+            builtins.deferred_render = render
+
+        self.font=loader.load_font('font/mono_font')
 
         x=base.win.get_x_size()//2
         y=base.win.get_y_size()//2
@@ -60,8 +77,10 @@ class Game(ShowBase):
         self.tutorial_chart={
                             'start':{'txt':'Do you understand flow charts?\n (use the keys written next to the lines)',
                                     'left':('No', 'inst_1',None),
-                                    'right':('Yes','play', None)},
-                            'play':{'txt':'Good, lets play!',
+                                    'right':('Yes','setup', None)},
+                            'setup':{'txt':'Good, lets play!',
+                                    'up':('Setup', 'setup_quality', None)},
+                            'play':{'txt':'All done, lets play!',
                                     'up':('Start game', None, self.start_game)},
                             'inst_1':{'txt':'Okay. You see the box labeled "Yes"? ',
                                     'right':('Yes', 'inst_2',None),
@@ -78,7 +97,7 @@ class Game(ShowBase):
                                         'right':('Yes', 'inst_8',None)},
                             'inst_6':{'txt':'Listen.',
                                         'left':('No', 'inst_7',self.troll),
-                                        'right':('Ok...', 'play',None)},
+                                        'right':('Ok...', 'inst_1',None)},
                             'inst_7':{'txt':'I hate you.',
                                       'left':('Troll', 'inst_7',None),
                                        'right':('lolol', 'inst_7',None)},
@@ -88,9 +107,22 @@ class Game(ShowBase):
                                         'right':('Yes', 'inst_10',None),
                                         'left':('No', 'inst_10',None)},
                             'inst_10':{'txt':"(That wasn't a question.)",
-                                        'up':('Screw it', 'inst_6',None)}
+                                        'up':('Screw it', 'inst_6',None)},
+                            'setup_quality':{'txt':'Select the graphic quality level.',
+                                            'left':('Bad','setup_shadows', self.quality_minimal),
+                                            'up':('Best','setup_shadows', self.quality_full),
+                                            'right':('Medium','setup_shadows', self.quality_medium),
+                                            },
+                            'setup_shadows':{'txt':'Do you want shadows? (may cause problems)',
+                                            'left':('No','play', self.no_shadows ),
+                                            'right':('Yes','play', self.use_shadows),
+                                            },
+                            'potato':{'txt':'You are in Potato Mode - no shaders, no light, no effects. Set "potato-mode 0" in options.prc to enable shaders',
+                                    'up':('Ok.','play', None)}
                             }
 
+        if self.potato_mode:
+            self.tutorial_chart['setup_quality']=self.tutorial_chart['potato']
 
         self.current_chart=self.tutorial_chart
         self.current_chart_node='start'
@@ -99,6 +131,12 @@ class Game(ShowBase):
         base.accept('w', self.move)
         base.accept('a', self.rotate_left)
         base.accept('d', self.rotate_right)
+
+        self.bias=0.0035
+        base.accept('=', self.set_bias,[0.0001])
+        base.accept('-', self.set_bias,[-0.0001])
+
+
         self.key_lock=False
 
         self.tiles_description={
@@ -114,7 +152,40 @@ class Game(ShowBase):
                                 }
 
         print('loading tiles...')
-        self.set_loading_txt('Loading tiles...')
+        self.set_loading_txt('Loading actors...')
+
+        #self.zombie=loader.load_model('actor/m_zombie',)
+
+        self.zombie= Actor('actor/m_zombie',
+                          {'idle':'actor/a_zombie_idle',
+                          'interrupt':'actor/a_zombie_interrupt',
+                          'ready':'actor/a_zombie_ready',
+                          'stabbed':'actor/a_zombie_stabbed',
+                          'strike':'actor/a_zombie_strike',
+                          'block':'actor/a_zombie_block',
+                          'die':'actor/a_zombie_die',
+                          'attack':'actor/a_zombie_attack'})
+        if not self.potato_mode:
+            self.zombie.set_blend(frameBlend = True)
+            attr = ShaderAttrib.make(Shader.load(Shader.SLGLSL, 'shader/actor_v.glsl', 'shader/geometry_f.glsl'))
+            attr = attr.setFlag(ShaderAttrib.F_hardware_skinning, True)
+            self.zombie.set_attrib(attr)
+            loader._setTextureInputs(self.zombie)
+        self.zombie.set_transparency(TransparencyAttrib.MNone, 1)
+
+        self.sword=loader.load_model('actor/m_sword')
+        self.sword= Actor('actor/m_sword',
+                          {'idle':'actor/a_sword_idle',
+                          'stab':'actor/a_sword_stab',
+                          'slash':'actor/a_sword_slash',
+                          'block':'actor/a_sword_block',
+                          })
+        if not self.potato_mode:
+            self.sword.set_attrib(attr)
+            loader._setTextureInputs(self.sword)
+            self.sword.set_transparency(TransparencyAttrib.MNone, 1)
+
+        self.set_loading_txt('Loading models...')
         self.tileset=level_gen.Tileset('model/tile/dungeon_')
         self.tileset.add_tile('wne_0', 8)
         self.tileset.add_tile('we_0', 1)
@@ -126,14 +197,94 @@ class Game(ShowBase):
         self.tileset.add_wall('wall')
         print('building level...')
         self.set_loading_txt('Building level...')
-        self.level, self.map = level_gen.generate_level(self.tileset, num_tiles=250, seed=2)
+        self.level, self.map = level_gen.generate_level(self.tileset, num_tiles=250, seed=33)
         #self.level.reparent_to(render)
         #self.level.analyze()
         print('ready!')
+        self.set_loading_txt('Loading music...')
+        self.menu_music=loader.load_music('music/violin_drums.ogg')
+        self.menu_music.set_loop(True)
+        self.game_music=loader.load_music('music/oppressive_gloom.ogg')
+        self.game_music.set_loop(True)
+        self.combat_music=loader.load_music('music/oppressive_gloom.ogg')
+        self.combat_music.set_loop(True)
+        self.set_loading_txt('Loading sounds...')
+        self.sounds={'footsteps':loader.load_sfx('sound/footsteps.ogg'),
+                     'turn':loader.load_sfx('sound/turn.ogg'),
+                     'click':loader.load_sfx('sound/click.ogg'),
+                    }
         self.set_loading_txt('')
+
+
+        base.musicManager.setVolume(0.5)
 
         self.chart=FlowChart(self)
         self.chart.update()
+        self.menu_music.play()
+
+        self.accept('tab', base.bufferViewer.toggleEnable)
+        self.accept('1',self.zombi_anim, ['interrupt'])
+        self.accept('2',self.zombi_anim, ['ready'])
+        self.accept('3',self.zombi_anim, ['stabbed'])
+        self.accept('4',self.zombi_anim, ['attack'])
+        self.accept('5',self.zombi_anim, ['block'])
+        #self.accept('6',self.zombi_anim, ['die'])
+        self.accept('7',self.sword_anim, ['stab'])
+        self.accept('8',self.sword_anim, ['slash'])
+        self.accept('6',self.sword_anim, ['block'])
+        self.accept('9',aspect2d.hide)
+        self.accept('0',aspect2d.show)
+
+    def sword_anim(self, anim):
+        s=Sequence(self.sword.actorInterval(anim, playRate=1.3), Func(self.sword.loop, 'idle'))
+        s.start()
+
+    def zombi_anim(self, anim):
+        s=Sequence(self.zombie.actorInterval(anim, playRate=1.3), Func(self.zombie.loop, 'idle'))
+        s.start()
+
+    def no_shadows(self):
+        if not self.potato_mode:
+            #point light, attached to camera
+            self.light_1 = SphereLight(color=(0.6,0.4,0.2), pos=(0,0,3), radius=25.0, shadow_size=0, shadow_bias=0.0035)
+            self.light_1.attach_to(base.camera, Point3(-2.0, 2.0, 0.5))
+            taskMgr.add(self.update, 'main_update_tsk')
+
+    def use_shadows(self):
+        if not self.potato_mode:
+            #point light, attached to camera
+            self.light_1 = SphereLight(color=(0.6,0.4,0.2), pos=(0,0,3), radius=25.0, shadow_size=512, shadow_bias=0.0035)
+            self.light_1.attach_to(base.camera, Point3(-2.0, 2.0, 0.5))
+            taskMgr.add(self.update, 'main_update_tsk')
+
+    def quality_minimal(self):
+        if not self.potato_mode:
+            options=Options('presets/minimal.ini')
+            deferred_renderer.reset_filters(**options.get())
+
+    def quality_full(self):
+        if not self.potato_mode:
+            options=Options('presets/full.ini')
+            deferred_renderer.reset_filters(**options.get())
+
+    def quality_medium(self):
+        if not self.potato_mode:
+            options=Options('presets/medium.ini')
+            deferred_renderer.reset_filters(**options.get())
+
+    def update(self, task):
+        self.sword.set_pos(base.camera.get_pos(render))
+        h=base.camera.get_h(render)
+        self.sword.set_hpr(h, -5,0)
+        dt = globalClock.getDt()
+        if int(globalClock.get_frame_time()*100) % 8 ==0:
+            self.light_1.set_color(Vec3(0.6,0.4,0.2)*random.uniform(0.75, 1.0))
+        return task.again
+
+    def set_bias(self, amount):
+        self.bias+=amount
+        print( self.bias)
+        self.light_1.geom.setShaderInput('bias', self.bias)
 
     def troll(self):
         self.logo.hide()
@@ -171,8 +322,17 @@ class Game(ShowBase):
 
     def start_game(self):
         self.logo.hide()
+        self.menu_music.stop()
+        self.game_music.play()
         self.current_chart=None
-        self.level.reparent_to(render)
+        self.level.reparent_to(deferred_render)
+        self.sword.reparent_to(deferred_render)
+        self.sword.loop('idle')
+        self.zombie.reparent_to(deferred_render)
+        self.zombie.set_hpr(90, 0, 0)
+        self.zombie.set_pos(-4, 0, 0)
+        self.zombie.set_scale(0.03)
+        self.zombie.loop('idle')
         self.key_lock=True
         pos=base.camera.get_pos(render)
         h=round(base.camera.get_h()%360)//90
@@ -293,15 +453,17 @@ class Game(ShowBase):
             return
         self.key_lock=True
         if self.current_chart is None:
+            self.sounds['turn'].play()
             h=base.camera.get_h()
             s=Sequence()
-            s.append(LerpHprInterval(base.camera, 0.8, (h+72,-2,-4)))
-            s.append(LerpHprInterval(base.camera, 0.2, (h+90,0,0)))
-            s.append(Wait(0.1))
+            s.append(LerpHprInterval(base.camera, 0.8, (h+72,-10,-4)))
+            s.append(LerpHprInterval(base.camera, 0.2, (h+90,-5,0)))
+            s.append(Wait(0.2))
             s.append(Func(self.unlock_keys))
             s.start()
         else:
             if 'left' in self.current_chart[self.current_chart_node]:
+                self.sounds['click'].play()
                 cmd=self.current_chart[self.current_chart_node]['left'][2]
                 self.current_chart_node=self.current_chart[self.current_chart_node]['left'][1]
                 if cmd:
@@ -320,16 +482,17 @@ class Game(ShowBase):
             return
         self.key_lock=True
         if self.current_chart is None:
+            self.sounds['turn'].play()
             h=base.camera.get_h()
             s=Sequence()
-            s.append(LerpHprInterval(base.camera, 0.8, (h-72,-2,4)))
-            s.append(LerpHprInterval(base.camera, 0.2, (h-90,0,0)))
-            s.append(Wait(0.1))
+            s.append(LerpHprInterval(base.camera, 0.8, (h-72,-10,4)))
+            s.append(LerpHprInterval(base.camera, 0.2, (h-90,-5,0)))
+            s.append(Wait(0.2))
             s.append(Func(self.unlock_keys))
             s.start()
         else:
-
             if 'right' in self.current_chart[self.current_chart_node]:
+                self.sounds['click'].play()
                 cmd=self.current_chart[self.current_chart_node]['right'][2]
                 self.current_chart_node=self.current_chart[self.current_chart_node]['right'][1]
                 if cmd:
@@ -351,11 +514,16 @@ class Game(ShowBase):
         self.key_lock=True
         if self.current_chart is None:
             if self.can_move():
+                self.sounds['footsteps'].play()
                 self.key_lock=True
                 pos=base.camera.get_pos(render)
-                h=round(base.camera.get_h()%360)//90
+                heading=base.camera.get_h()
+                h=(round(heading)%360)//90
                 x,y=((0,2), (-2,0), (0,-2), (2,0))[h]
                 s=Sequence()
+                head_sequence=Sequence(LerpHprInterval(base.camera, 0.5, (heading,0, 0)),
+                                       LerpHprInterval(base.camera, 0.5, (heading,-5,0)))
+                move_sequence=Sequence()
                 for i in range(5):
                     if i==4:
                         z=0
@@ -363,12 +531,17 @@ class Game(ShowBase):
                         z=0.1
                     else:
                         z=-0.1
-                    s.append(LerpPosInterval(base.camera, 0.2, pos+Point3(x*(i+1), y*(i+1), z)))
+                    move_sequence.append(LerpPosInterval(base.camera, 0.2, pos+Point3(x*(i+1), y*(i+1), z)))
+                s.append(Parallel(head_sequence, move_sequence))
                 s.append(Wait(0.1))
                 s.append(Func(self.unlock_keys))
                 s.start()
+            else:
+                self.key_lock=False
+                return
         else:
             if 'up' in self.current_chart[self.current_chart_node]:
+                self.sounds['click'].play()
                 cmd=self.current_chart[self.current_chart_node]['up'][2]
                 self.current_chart_node=self.current_chart[self.current_chart_node]['up'][1]
                 if cmd:
@@ -384,3 +557,4 @@ class Game(ShowBase):
 
 game = Game()
 game.run()
+

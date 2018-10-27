@@ -113,7 +113,7 @@ class FlowChart:
         lines=aspect2d.attach_new_node('line')
 
         l=LineSegs()
-        l.set_color(Vec4(0, 0, 0, 1))
+        l.set_color(Vec4(0, 0, 0, 0.7))
         l.set_thickness(5.0)
         l.move_to(Point3(top.pos.x, 0, top_min_point.z))
         l.draw_to(Point3(top.pos.x, 0, bottom_max_point.z))
