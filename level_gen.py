@@ -177,6 +177,9 @@ def generate_level(tileset, num_tiles, seed=None, grid=None):
     wall0.set_y(-10)
     wall0.set_h(180)
 
+    #to late to find/fix bug, let's go around
+    zombie_tiles=[]
+
     tiles={(0,0):[]}
     #print ('Adding tiles')
     while len(tiles) < num_tiles:
@@ -189,6 +192,8 @@ def generate_level(tileset, num_tiles, seed=None, grid=None):
                 model=tileset.tile.copy_to(root)
                 model.set_pos_hpr(pos, hpr)
                 tile_id=(round(pos[0]*0.1),round(pos[1]*0.1))
+                if model.get_name() == 'dungeon_n_0.egg':
+                    zombie_tiles.append(tile_id)
                 prev_tile_id=prev_tile(hpr, tile_id)
                 #if prev_tile_id not in tiles:
                 #    tiles[prev_tile_id]=[]
@@ -231,6 +236,9 @@ def generate_level(tileset, num_tiles, seed=None, grid=None):
         model=tileset.get_wall().copy_to(root)
         model.set_pos_hpr(pos, hpr)
         connection.remove_node()
+        tile_id=(round(pos[0]*0.1),round(pos[1]*0.1))
+        if tile_id in zombie_tiles:
+            zombie_tiles.pop(zombie_tiles.index(tile_id))
     #find all places where there are two walls back to back and remve them
     #print ('Removing walls')
     walls={}
@@ -252,6 +260,6 @@ def generate_level(tileset, num_tiles, seed=None, grid=None):
 
     #root.ls()
     #print('optimizing...')
-    return make_quadtree(root), tiles
+    return make_quadtree(root), tiles, zombie_tiles
     #root.flatten_strong()
     #return root

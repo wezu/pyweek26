@@ -219,7 +219,7 @@ class Game(ShowBase):
         self.tileset.add_wall('wall')
         #print('building level...')
         self.set_loading_txt('Building level...')
-        self.level, self.map = level_gen.generate_level(self.tileset, num_tiles=250, seed=33)
+        self.level, self.map, zombie_tiles = level_gen.generate_level(self.tileset, num_tiles=250, seed=33)
         #self.level.reparent_to(render)
         #self.level.analyze()
         #print('ready!')
@@ -243,33 +243,80 @@ class Game(ShowBase):
                      'slash':loader.load_sfx('sound/slash-hit.ogg'),
                      'die':loader.load_sfx('sound/die.ogg'),
                     }
-        self.set_loading_txt('')
 
-
-        base.musicManager.setVolume(0.5)
-
-        self.chart=FlowChart(self)
-        self.chart.update()
-        self.menu_music.play()
         self.hp=1.0
         self.zombie_hp=1.0
 
-        #print(self.map)
-        self.zombie_map=set()
+        self.set_loading_txt('Spawning zombies...')
+        self.zombie_map={}
 
         #find a place to put the zombie in
+        #this should be close to the start, but not on top of the player
         for x,y in ((0,1), (0,-1), (1,0), (-1,0)):
             if (x,y) in self.map:
                 for (z,w) in ((x,y+1), (x,y-1), (x+1,y), (x-1,y)):
                     if (z,w) in self.map and (z,w)!=(x,y) and (z,w)!=(0,0):
                         #print(z,w, ' zombie can go here!')
                         self.zombie.set_pos(z*10, w*10, 0)
-                        self.zombie_map.add((z,w))
+                        self.zombie_map[(z,w)]=self.zombie
+                        first_zombie_pos=(z,w)
                         break
+        #put 10 more zombies in the map
+        valid_pos=[]
+        #print(len(zombie_tiles))
+        num_samples=min(50, len(zombie_tiles))
+
+        for pos in random.sample(zombie_tiles, num_samples):
+            if len(valid_pos) ==10:
+                break
+            if pos != first_zombie_pos:
+                v_pos=Vec2(pos)
+                good=True
+                for test_pos in valid_pos:
+                    d=(Vec2(test_pos)-v_pos).length()
+                    if d <5.0:
+                        good=False
+                if good:
+                    valid_pos.append(pos)
+
+        for zombie_pos in valid_pos:
+            self.make_zombie(zombie_pos)
+        self.set_loading_txt('')
+
+        self.chart=FlowChart(self)
+        self.chart.update()
+        base.musicManager.setVolume(0.5)
+        self.menu_music.play()
 
         self.accept('tab', base.bufferViewer.toggleEnable)
         self.accept('9',aspect2d.hide)
         self.accept('0',aspect2d.show)
+
+
+    def make_zombie(self, map_pos):
+        zombie= Actor('actor/m_zombie',
+                          {'idle':'actor/a_zombie_idle',
+                          'interrupt':'actor/a_zombie_interrupt',
+                          'ready':'actor/a_zombie_ready',
+                          'stabbed':'actor/a_zombie_stabbed',
+                          'strike':'actor/a_zombie_strike',
+                          'block':'actor/a_zombie_block',
+                          'die':'actor/a_zombie_die',
+                          'attack':'actor/a_zombie_attack'})
+        #zombie.set_hpr(90, 0, 0)
+        zombie.set_scale(0.03)
+        zombie.loop('idle')
+        if not self.potato_mode:
+            zombie.set_blend(frameBlend = True)
+            attr = ShaderAttrib.make(Shader.load(Shader.SLGLSL, 'shader/actor_v.glsl', 'shader/geometry_f.glsl'))
+            attr = attr.setFlag(ShaderAttrib.F_hardware_skinning, True)
+            zombie.set_attrib(attr)
+            loader._setTextureInputs(zombie)
+        zombie.set_transparency(TransparencyAttrib.MNone, 1)
+        zombie.set_pos(map_pos[0]*10, map_pos[1]*10, 0)
+        zombie.reparent_to(deferred_render)
+        self.zombie_map[map_pos]=zombie
+
 
     def end_combat(self):
         #print('end combat')
@@ -283,7 +330,8 @@ class Game(ShowBase):
         #print(pos, map_pos, forward_pos)
         self.current_chart=None
 
-        self.zombie_map.discard(map_pos)
+        del self.zombie_map[map_pos]
+        print(len(self.zombie_map))
 
         LerpPosInterval(base.camera, 0.5, (map_pos[0]*10, map_pos[1]*10, pos.z)).start()
 
@@ -384,6 +432,7 @@ class Game(ShowBase):
             self.combat_chart['result']['txt']='You try to strike the zombie, but it blocks easily.'
         else:
             self.zombi_anim('interrupt')
+            self.sounds['slash'].play()
             self.combat_chart['result']['txt']='You strike the zombie'
             self.zombie_hp-=0.1
 
@@ -690,11 +739,16 @@ class Game(ShowBase):
                         )[h]
                 s=Sequence()
                 if forward_pos in self.zombie_map:
-                    self.zombie_hp=1.0
+                    self.zombie=self.zombie_map[forward_pos]
+                    self.zombie_hp=.1
                     self.current_chart=self.combat_chart
                     self.current_chart_node='start'
-                    quat=Quat()
-                    quat.set_hpr((-heading,0, 0))
+                    temp=render.attach_new_node('temp')
+                    temp.set_pos(self.zombie.get_pos())
+                    temp.look_at(base.camera)
+                    temp.set_h(temp.get_h()-180)
+                    quat=temp.get_quat()
+                    temp.remove_node()
                     head_sequence=Sequence(LerpHprInterval(base.camera, 0.5, (heading,-3, 0)),
                                        LerpHprInterval(base.camera, 0.5, (heading,-5,0)))
                     move_sequence=Sequence()
