@@ -82,7 +82,13 @@ class Game(ShowBase):
                             'setup':{'txt':'Good, lets play!',
                                     'up':('Setup', 'setup_quality', None)},
                             'play':{'txt':'All done, lets play!',
-                                    'up':('Start game', None, self.start_game)},
+                                    'up':('Start game', 'intro', self.logo.hide)},
+                            'intro':{'txt':'The darkness envelops you. You lose track of time, space and self.',
+                                    'up':('Next', 'intro1',None)},
+                            'intro1':{'txt':"All you can remember is someone's voice, maybe even your own...",
+                                    'up':('Next', 'intro2', None)},
+                            'intro2':{'txt':'"You can move on only when you defat all the undead"',
+                                    'up':('Go!', None, self.start_game)},
                             'inst_1':{'txt':'Okay. You see the box labeled "Yes"? ',
                                     'right':('Yes', 'inst_2',None),
                                     'left':('No', 'inst_5',None)},
@@ -161,9 +167,13 @@ class Game(ShowBase):
         self.current_chart_node='start'
 
 
-        base.accept('w', self.move)
-        base.accept('a', self.rotate_left)
-        base.accept('d', self.rotate_right)
+        self.key_forward=ConfigVariableString('up-key', 'w').get_value()
+        self.key_left=ConfigVariableString('left-key', 'a').get_value()
+        self.key_right=ConfigVariableString('right-key', 'a').get_value()
+
+        base.accept(self.key_forward, self.move)
+        base.accept(self.key_left, self.rotate_left)
+        base.accept(self.key_right, self.rotate_right)
 
         self.bias=0.0035
         base.accept('=', self.set_bias,[0.0001])
@@ -174,15 +184,130 @@ class Game(ShowBase):
         self.block=False
 
         self.tiles_description={
-                                'wall':('You see a wall',),
-                                (False,False,False):('You see a dead end',),
-                                (False,True,False):('You see a tunel leading straight ahead',),
-                                (True,False,False):('You see a tunel leading left',),
-                                (False,False,True):('You see a tunel leading right',),
-                                (True,True,False):('You see a tunel with a side passage going left',),
-                                (False,True,True):('You see a tunel with a side passage going right',),
-                                (True, False, True):('The tunel before you goes left and right',),
-                                (True, True, True):('You came to a junction',)
+                                'wall':('You see a wall',
+                                        'You see a wall',
+                                        'You see a wall',
+                                        'You see a wall',
+                                        'There is a big wall of stones in front of you.',
+                                        'There is just a stone wall in front.',
+                                        'There is no passage in front because of the wall.',
+                                        'Stones, stones everywhere I look in front.',
+                                        'You see a thick wall of cold bricks.',
+                                        'You see a thick wall of mouldy bricks.',
+                                        'You see a thick wall of rotten bricks.',
+                                        'You see a thick wall of decaying bricks.',
+                                        'You can notice a strong wall just ahead.',
+                                        'The passage is leading to a dead end.',
+                                        'The passage is blocked by a dry-stone wall.',
+                                        'The passageway is blocked by a stone wall.',
+                                        'The stonework do not allow you to move forward.',
+                                        "There is a wall. You stare at it but it doesn't stare back. Surprise!",
+                                        "There is a wall. You stare at it but it doesn't stare back. Surprise?",
+                                        "There is a wall. You stare at it but it doesn't stare back....or does it???",
+                                        'You see nothing out of the ordinary.',
+                                        'You see nothing out of the unusual.',
+                                        'You see nothing exceptional about this wall.',
+                                        'You should be accustomed to seeing bricks.',
+                                        'The sanctity of this place has been defiled'
+                                        ),
+                                (False,False,False):('You see a dead end',
+                                                     'You see a dead end',
+                                                     'You see a dead end',
+                                                     'You see a dead end',
+                                                     'You can see a brick wall',
+                                                     'There are just three stone walls in front of you.',
+                                                     'The passage terminates in a dead end.',
+                                                     "It's a blind alley - there is no hope of progress",
+                                                     "It's a blind alley - there is no hope of moving on..",
+                                                     "The walls obstructs my progress.",
+                                                     "These walls impedes my progress.",
+                                                     'This way leads nowhere.'
+                                                    ),
+                                (False,True,False):('You see a tunnel leading straight ahead',
+                                                    'You see a tunnel leading straight ahead',
+                                                    'You see a tunnel leading straight ahead',
+                                                    'There is a tunnel before.',
+                                                    'There is a tunnel before.',
+                                                    'There is a tunnel before.',
+                                                    'This passage looks familiar.',
+                                                    'Have you been in this place?',
+                                                    'There is a slight breeze here..',
+                                                    'There is no light coming from this tunnel',
+                                                    'The smell of death surrounds me',
+                                                    'The sanctity of this place has been defiled',
+                                                    'The is something before me',
+                                                    'You hear footsteps in the distance',
+                                                    'The corridor is shrouded in a gloomy light',
+                                                    'This way leads straight'
+                                                    ),
+                                (True,False,False):('You see a tunnel leading left',
+                                                    'You see a tunnel leading left',
+                                                    'You see a tunnel leading left',
+                                                    'You see a tunnel leading left',
+                                                    'You see a passage to the left',
+                                                    'You see a passage to the left',
+                                                    'The corridor leads left',
+                                                    'How long have I been here?',
+                                                    'There is no hope, just a passage to the left',
+                                                    'I can go left from here',
+                                                    '"Left"- you say aloud, just to remember how a human vice sounds like',
+                                                    'You think you are lost',
+                                                    '...and then a Dragon eats you! - not really, just checking if you read this.',
+                                                    'I wonder if God was ever here? Did he turn away in fear?'
+                                                    ),
+                                (False,False,True):('You see a tunnel leading right',
+                                                    'You see a tunnel leading right',
+                                                    'You see a tunnel leading right',
+                                                    'You see a passage to the right',
+                                                    'You see a passage to the right',
+                                                    'You see a passage to the right',
+                                                    'The corridor leads right',
+                                                    'The corridor leads right',
+                                                    'The corridor leads right',
+                                                    'The corridor leads right',
+                                                    'All these corridors look alike',
+                                                    'There is no hope, just a passage to the right',
+                                                    "I can't go left from here",
+                                                    '"Right"- you say aloud, just to remember how a human vice sounds like',
+                                                    ),
+                                (True,True,False):('You see a tunnel with a side passage going left',
+                                                    'You can go forward or you can go left',
+                                                    ),
+                                (False,True,True):('You see a tunnel with a side passage going right',
+                                                    'You see a tunnel with a side passage going right',
+                                                    'You see a tunnel with a side passage going right',
+                                                    'You can go forward or you can go right',
+                                                    'You can go forward or you can go right',
+                                                    'You can go forward or you can go right',
+                                                    'The echo of you footsteps taunt you, but you know you are not alone',
+                                                    ),
+                                (True, False, True):('The tunnel before you goes left and right',
+                                                    'The tunnel before you goes left and right',
+                                                    'The tunnel before you goes left and right',
+                                                    'The tunnel before you goes left and right',
+                                                    'The tunnel before you goes left and right',
+                                                    "There's a slight breeze coming from the right",
+                                                    "There's a slight breeze coming from the left",
+                                                    "Something moved in the darkness",
+                                                    "Left or Right? You could toss a coin if you only had a coin..."
+                                                    ),
+                                (True, True, True):('You came to a junction',
+                                                    'You came to a junction',
+                                                    'You came to a junction',
+                                                    'You came to a junction',
+                                                    'You came to a complex corridor, simple is better than complex.',
+                                                    'You came to a complex corridor, complex is better than complicated.',
+                                                    'There should be one (and preferably only one) obvious way to go... there is not.',
+                                                    'You can go left, right or straight ahead.',
+                                                    'You came to a 4 way intersection.',
+                                                    'Tunnels connect here.',
+                                                    'Tunnels connect here.',
+                                                    'Tunnels connect here.',
+                                                    'You think you are lost, even more then before',
+                                                    'You can choose where to go from here',
+                                                    'You can choose where to go from here, if only you knew where to go',
+                                                    'You see three tunnels before you - Choose your destiny.',
+                                                    )
                                 }
 
         #print('loading tiles...')
@@ -234,7 +359,7 @@ class Game(ShowBase):
         self.tileset.add_wall('wall')
         #print('building level...')
         self.set_loading_txt('Building level...')
-        self.level, self.map, zombie_tiles = level_gen.generate_level(self.tileset, num_tiles=250, seed=33)
+        self.level, self.map, zombie_tiles = level_gen.generate_level(self.tileset, num_tiles=250)
         #self.level.reparent_to(render)
         #self.level.analyze()
         #print('ready!')
@@ -267,15 +392,17 @@ class Game(ShowBase):
 
         #find a place to put the zombie in
         #this should be close to the start, but not on top of the player
+        first_zombie_pos=None
         for x,y in ((0,1), (0,-1), (1,0), (-1,0)):
-            if (x,y) in self.map:
-                for (z,w) in ((x,y+1), (x,y-1), (x+1,y), (x-1,y)):
-                    if (z,w) in self.map and (z,w)!=(x,y) and (z,w)!=(0,0):
-                        #print(z,w, ' zombie can go here!')
-                        self.zombie.set_pos(z*10, w*10, 0)
-                        self.zombie_map[(z,w)]=self.zombie
-                        first_zombie_pos=(z,w)
-                        break
+            if first_zombie_pos is None:
+                if (x,y) in self.map:
+                    for (z,w) in ((x,y+1), (x,y-1), (x+1,y), (x-1,y)):
+                        if (z,w) in self.map and (z,w)!=(x,y) and (z,w)!=(0,0):
+                            if first_zombie_pos is None:
+                                self.zombie.set_pos(z*10, w*10, 0)
+                                self.zombie_map[(z,w)]=self.zombie
+                                first_zombie_pos=(z,w)
+
         #put 10 more zombies in the map
         valid_pos=[]
         #print(len(zombie_tiles))
@@ -300,13 +427,14 @@ class Game(ShowBase):
 
         self.chart=FlowChart(self)
         self.chart.update()
-        base.musicManager.setVolume(0.5)
+        base.musicManager.set_volume(ConfigVariableDouble('music-volume', 0.75).get_value())
+        base.sfxManagerList[0].set_volume(ConfigVariableDouble('sound-volume', 1.0).get_value())
         self.menu_music.play()
 
         self.accept('tab', base.bufferViewer.toggleEnable)
-        self.accept('1',self.test_vfx)
         self.accept('9',aspect2d.hide)
         self.accept('0',aspect2d.show)
+
 
     def game_over(self):
         self.key_lock=1
@@ -356,7 +484,7 @@ class Game(ShowBase):
 
     def end_combat(self):
         #print('end combat')
-        self.hp=1.0
+        self.hp+=0.5
         self.set_hp()
 
         pos=base.camera.get_pos(render)
@@ -386,6 +514,8 @@ class Game(ShowBase):
     def set_hp(self, value=0.0):
         self.hp+=value
         #print(self.hp)
+        if self.hp >1.0:
+            self.hp =1.0
         if self.hp <=0.01:
            self.hp =0.0
            self.sounds['die'].play()
@@ -789,7 +919,7 @@ class Game(ShowBase):
                 if forward_pos in self.zombie_map:
                     self.zombie=self.zombie_map[forward_pos]
                     self.zombie_hp=1.0
-                    self.zombi_state = 'ready'
+                    self.zombi_state = 'idle'
                     self.current_chart=self.combat_chart
                     self.current_chart_node='start'
                     temp=render.attach_new_node('temp')

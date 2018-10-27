@@ -43,7 +43,7 @@ class FlowChart:
         self.left_lable.set_text_color((0.8, 0, 0, 1))
         self.left_lable.set_outline_color((0.0, 0, 0, 1))
         self.left_lable.set_outline_strength(2.0)
-        self.left_lable.set_text('A')
+        self.left_lable.set_text(self.game.key_left.upper())
         self.left_lable.reparent_to(aspect2d)
         self.left_lable.set_pos(-0.65,0,-0.715)
         self.left_lable.set_scale(0.07)
@@ -64,7 +64,7 @@ class FlowChart:
         self.right_lable.set_text_color((0.8, 0, 0, 1))
         self.right_lable.set_outline_color((0.0, 0, 0, 1))
         self.right_lable.set_outline_strength(2.0)
-        self.right_lable.set_text('D')
+        self.right_lable.set_text(self.game.key_right.upper())
         self.right_lable.reparent_to(aspect2d)
         self.right_lable.set_pos(0.65,0,-0.715)
         self.right_lable.set_scale(0.07)
@@ -86,7 +86,7 @@ class FlowChart:
         self.top_lable.set_text_color((0.8, 0, 0, 1))
         self.top_lable.set_outline_color((0.0, 0, 0, 1))
         self.top_lable.set_outline_strength(2.0)
-        self.top_lable.set_text('W')
+        self.top_lable.set_text(self.game.key_forward.upper())
         self.top_lable.reparent_to(aspect2d)
         self.top_lable.set_pos(0.05,0,-0.45)
         self.top_lable.set_scale(0.07)
@@ -159,7 +159,7 @@ class FlowChart:
             self.right_line.remove_node()
             self.top_line.remove_node()
         except:
-            print("fu?")
+            pass
         can_move=self.game.can_move()
         left_txt=self.game.get_left_text()
         if left_txt is not None:
@@ -181,7 +181,13 @@ class FlowChart:
 
         up_text=self.game.get_up_text()
         if up_text is not None:
-            if can_move:
+            if self.game.current_chart is None:
+                if can_move:
+                    self.top_lable.geom.show()
+                    self.top.set_text(up_text)
+                    self.top.set_pos(0,0,-0.2)
+                    self.top_line=self.draw_vertical_line(self.top, self.center)
+            else:
                 self.top_lable.geom.show()
                 self.top.set_text(up_text)
                 self.top.set_pos(0,0,-0.2)
