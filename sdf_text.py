@@ -7,6 +7,7 @@ __all__ = ['SdfText']
 
 class SdfText:
     def __init__(self, font):
+        self.potato_mode=ConfigVariableBool('potato-mode', False).get_value()
         self.txt_node=TextNode('sdf_text_node')
         self.txt_node.set_font(font)
         self.geom=NodePath(self.txt_node.get_internal_geom())
@@ -32,11 +33,14 @@ class SdfText:
         if self.geom:
             self.geom.remove_node()
         self.geom=NodePath(self.txt_node.get_internal_geom())
-        self.geom.set_shader(self.shader, 1)
-        self.geom.set_shader_input('outline_color', self.__outline_color)
-        self.geom.set_shader_input('outline_offset', self.__outline_offset)
-        self.geom.set_shader_input('outline_power', self.__outline_power)
-        self.geom.set_transparency(TransparencyAttrib.M_alpha, 1)
+        if self.potato_mode:
+            self.geom.set_transparency(TransparencyAttrib.M_binary, 1)
+        else:
+            self.geom.set_shader(self.shader, 1)
+            self.geom.set_shader_input('outline_color', self.__outline_color)
+            self.geom.set_shader_input('outline_offset', self.__outline_offset)
+            self.geom.set_shader_input('outline_power', self.__outline_power)
+            self.geom.set_transparency(TransparencyAttrib.M_alpha, 1)
         if self.__center:
             center_point=self.geom.get_bounds().get_center()
             self.geom.set_pos(-center_point)

@@ -9,6 +9,7 @@ from direct.interval.IntervalGlobal import *
 from direct.gui.OnscreenImage import OnscreenImage
 from direct.actor.Actor import Actor
 
+import os
 import random
 import builtins
 
@@ -36,7 +37,7 @@ class Game(ShowBase):
         self.potato_mode=ConfigVariableBool('potato-mode', False).get_value()
 
         if not self.potato_mode:
-            options=Options('presets/minimal.ini')
+            options=Options(os.path.join(self.mainDir, 'presets/minimal.ini'))
             DeferredRenderer(**options.get())
             #set some other options...
             deferred_renderer.set_near_far(0.01,50.0)
@@ -345,7 +346,7 @@ class Game(ShowBase):
         if not self.potato_mode:
             self.sword.set_attrib(attr)
             loader._setTextureInputs(self.sword)
-            self.sword.set_transparency(TransparencyAttrib.MNone, 1)
+        self.sword.set_transparency(TransparencyAttrib.MNone, 1)
 
         self.set_loading_txt('Loading models...')
         self.tileset=level_gen.Tileset('model/tile/dungeon_')
@@ -527,7 +528,8 @@ class Game(ShowBase):
            hpr.z=-90
            LerpPosHprInterval(base.camera, 2.0, pos, hpr).start()
            self.sword.hide()
-        deferred_renderer.set_filter_input('pre_aa','health', self.hp)
+        if not self.potato_mode:
+            deferred_renderer.set_filter_input('pre_aa','health', self.hp)
 
     def zombie_turn(self):
         if self.zombie_hp <= 0.01:
@@ -650,17 +652,17 @@ class Game(ShowBase):
 
     def quality_minimal(self):
         if not self.potato_mode:
-            options=Options('presets/minimal.ini')
+            options=Options(os.path.join(self.mainDir, 'presets/minimal.ini'))
             deferred_renderer.reset_filters(**options.get())
 
     def quality_full(self):
         if not self.potato_mode:
-            options=Options('presets/full.ini')
+            options=Options(os.path.join(self.mainDir, 'presets/full.ini'))
             deferred_renderer.reset_filters(**options.get())
 
     def quality_medium(self):
         if not self.potato_mode:
-            options=Options('presets/medium.ini')
+            options=Options(os.path.join(self.mainDir, 'presets/medium.ini'))
             deferred_renderer.reset_filters(**options.get())
 
     def update(self, task):
