@@ -134,10 +134,10 @@ void main()
     //#ifndef DISABLE_NORMALMAP
     vec4 normal_map=texture(tex_normal,final_uv);
     //rescale normal
-    vec3 normal=normal_map.xyz*2.0-1.0;
+    vec3 normal=normalize(normal_map.xyz*2.0-1.0);
     n*=normal.z;
-    n+=T*normal.x;
-    n+=B*normal.y;
+    n+=normalize(T)*normal.x;
+    n+=normalize(B)*normal.y;
     n=normalize(n);
     //#endif
     //float shine=shga_map.r;
