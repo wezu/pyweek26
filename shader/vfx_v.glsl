@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 uniform mat4 p3d_ModelViewProjectionMatrix;
 uniform mat4 p3d_ModelViewMatrix;
 uniform mat4 p3d_ModelMatrix;

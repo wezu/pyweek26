@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 in vec2 UV;
 in vec3 N;
 uniform sampler2D p3d_Texture0; //rgba color texture

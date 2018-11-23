@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 // This parameters should be configured according to Far and Near plane
 // of your main camera
 const float zFar = 200.0;

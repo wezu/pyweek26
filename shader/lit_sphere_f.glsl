@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 uniform sampler2D depth_tex;
 uniform sampler2D normal_tex;
 uniform sampler2D albedo_tex;

@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 struct p3d_LightSourceParameters
     {
     vec4 color;
@@ -45,20 +45,20 @@ vec3 unpack_normal_octahedron(vec2 packed_nrm)
     return normalize(v);
     }
 
-float soft_shadow(sampler2D tex, vec2 uv, float z, float bias, float blur)
+float soft_shadow( vec2 uv, float z, float bias, float blur)
     {
-    float result = float(texture(tex, uv + vec2( -0.326212, -0.405805)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(-0.840144, -0.073580)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(-0.695914, 0.457137)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(-0.203345, 0.620716)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(0.962340, -0.194983)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(0.473434, -0.480026)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(0.519456, 0.767022)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(0.185461, -0.893124)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(0.507431, 0.064425)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(0.896420, 0.412458)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(-0.321940, -0.932615)*blur).r >= z+bias);
-    result += float(texture(tex, uv + vec2(-0.791559, -0.597705)*blur).r >= z+bias);
+    float result = float(texture(shadowcaster.shadowMap, uv + vec2( -0.326212, -0.405805)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(-0.840144, -0.073580)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(-0.695914, 0.457137)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(-0.203345, 0.620716)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(0.962340, -0.194983)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(0.473434, -0.480026)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(0.519456, 0.767022)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(0.185461, -0.893124)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(0.507431, 0.064425)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(0.896420, 0.412458)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(-0.321940, -0.932615)*blur).r >= z+bias);
+    result += float(texture(shadowcaster.shadowMap, uv + vec2(-0.791559, -0.597705)*blur).r >= z+bias);
     return result/12.0;
     }
 
@@ -127,7 +127,7 @@ void main()
         float shadow= float(texture(spot.shadowMap, shadow_uv.xy).r >= shadow_uv.z+bias);
     #endif
     #ifndef DISABLE_SOFTSHADOW
-        float shadow= soft_shadow(spot.shadowMap, shadow_uv.xy+vec2(0.0, 0.005), shadow_uv.z, bias, 0.008*attenuation);
+        float shadow= soft_shadow(shadow_uv.xy+vec2(0.0, 0.005), shadow_uv.z, bias, 0.008*attenuation);
     #endif
     final*=shadow;
 

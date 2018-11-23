@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 uniform sampler2D final_light;
 uniform sampler2D normal_tex;
 uniform float power;

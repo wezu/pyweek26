@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 uniform sampler2D tex;
 uniform vec3 config;
 uniform vec2 screen_size;

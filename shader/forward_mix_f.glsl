@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 in vec2 uv;
 uniform sampler2D forward_tex;
 uniform sampler2D input_tex;

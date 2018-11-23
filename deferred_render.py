@@ -991,7 +991,7 @@ class WrappedLoader(object):
     def unloadSfx(self, sfx):
         self.original_loader.unloadSfx(sfx)
 
-    def loadShaderGLSL(self, v_shader, f_shader, define=None, version='#version 140'):
+    def loadShaderGLSL(self, v_shader, f_shader, define=None, version='#version 130'):
         # check if we already have a shader like that
         # note: this may fail depending on the dict implementation
         if (v_shader, f_shader, str(define)) in self.shader_cache:

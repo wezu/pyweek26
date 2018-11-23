@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 in vec2 UV;
 in vec3 N;
 in vec4 V;

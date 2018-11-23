@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 uniform mat4 trans_apiclip_of_camera_to_apiview_of_camera;
 uniform sampler2D depth_tex;
 uniform sampler2D input_tex;

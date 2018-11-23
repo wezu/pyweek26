@@ -390,6 +390,7 @@ class Game(ShowBase):
 
         self.set_loading_txt('Spawning zombies...')
         self.zombie_map={}
+        self.dead_zombies=[]
 
         #find a place to put the zombie in
         #this should be close to the start, but not on top of the player
@@ -435,7 +436,49 @@ class Game(ShowBase):
         self.accept('tab', base.bufferViewer.toggleEnable)
         self.accept('9',aspect2d.hide)
         self.accept('0',aspect2d.show)
+        self.make_minimap()
 
+    def make_minimap(self):
+        self.minmap_tex=Texture()
+        winprops = WindowProperties()
+        winprops.set_size(512, 512)
+        props = FrameBufferProperties()
+        props.set_rgb_color(True)
+        props.set_depth_bits(base.win.get_fb_properties().get_depth_bits())
+        flags=GraphicsPipe.BF_refuse_window | GraphicsPipe.BF_rtt_cumulative | GraphicsPipe.BF_resizeable
+        buff= base.graphicsEngine.make_output(pipe = base.pipe,
+                                             name = 'minimap',
+                                             sort = -2,
+                                             fb_prop = props,
+                                             win_prop = winprops,
+                                             flags= flags,
+                                             gsg=base.win.get_gsg(),
+                                             host = base.win)
+        buff.set_clear_color((1,1,1,1))
+        buff.add_render_texture(tex=self.minmap_tex,
+                                mode=GraphicsOutput.RTMBindOrCopy,
+                                bitplane=GraphicsOutput.RTPColor)
+        self.minimap_cam = base.make_camera(win=buff)
+        self.minimap_cam.reparent_to(render)
+        self.minimap_cam.set_pos(0,0,100)
+        self.minimap_cam.set_p(-90)
+        lens = OrthographicLens()
+        lens.set_film_size(120, 120)
+        lens.set_near(1.0)
+        lens.set_far(95.0)
+        self.minimap_cam.node().set_lens(lens)
+        x=base.win.get_x_size()//2
+        y=base.win.get_y_size()//2
+        #minimap = OnscreenImage(image = self.minmap_tex, scale=(128, 0, 128), pos = (128, 0, -128), parent=pixel2d)
+        cm = CardMaker('quad')
+        cm.setFrame(0, 256, 0, 256)
+        self.map_quad = pixel2d.attach_new_node(cm.generate())
+        self.map_quad.set_texture(self.minmap_tex)
+        self.map_quad.set_pos(0, 0, -256)
+        self.map_quad.set_shader(Shader.load(Shader.SLGLSL, 'shader/map_v.glsl', 'shader/map_f.glsl'), 1)
+        self.map_quad.set_shader_input('map_tex', loader.load_texture('texture/map.png'))
+        self.map_quad.set_transparency(TransparencyAttrib.M_alpha, 1)
+        self.map_quad.hide()
 
     def game_over(self):
         self.key_lock=1
@@ -443,6 +486,7 @@ class Game(ShowBase):
         self.zombie.hide()
         self.level.hide()
         self.sword.hide()
+        self.map_quad.hide()
         vfx_pos=render.get_relative_point(base.camera, (0, 9, 1.0))
         LerpPosInterval(base.camera, 0.5, vfx_pos).start()
 
@@ -482,6 +526,10 @@ class Game(ShowBase):
         zombie.reparent_to(deferred_render)
         self.zombie_map[map_pos]=zombie
 
+    def clear_dead_zombies(self):
+        for node in self.dead_zombies:
+            node.remove_node()
+        self.dead_zombies=[]
 
     def end_combat(self):
         #print('end combat')
@@ -495,6 +543,7 @@ class Game(ShowBase):
 
         self.current_chart=None
 
+        self.dead_zombies.append(self.zombie_map[map_pos].getGeomNode())
         del self.zombie_map[map_pos]
 
         if len(self.zombie_map)<1:
@@ -525,7 +574,7 @@ class Game(ShowBase):
            pos=base.camera.get_pos(render)
            pos.z=0.2
            hpr=base.camera.get_hpr(render)
-           hpr.z=-90
+           hpr.z=90
            LerpPosHprInterval(base.camera, 2.0, pos, hpr).start()
            self.sword.hide()
         if not self.potato_mode:
@@ -641,14 +690,14 @@ class Game(ShowBase):
             #point light, attached to camera
             self.light_1 = SphereLight(color=(0.6,0.4,0.2), pos=(0,0,3), radius=25.0, shadow_size=0, shadow_bias=0.0035)
             self.light_1.attach_to(base.camera, Point3(-2.0, 2.0, 0.5))
-            taskMgr.add(self.update, 'main_update_tsk')
+            taskMgr.add(self.update, 'main_update_tsk', sort=-150)
 
     def use_shadows(self):
         if not self.potato_mode:
             #point light, attached to camera
             self.light_1 = SphereLight(color=(0.6,0.4,0.2), pos=(0,0,3), radius=25.0, shadow_size=512, shadow_bias=0.0035)
             self.light_1.attach_to(base.camera, Point3(-2.0, 2.0, 0.5))
-            taskMgr.add(self.update, 'main_update_tsk')
+            taskMgr.add(self.update, 'main_update_tsk', sort=-150)
 
     def quality_minimal(self):
         if not self.potato_mode:
@@ -667,8 +716,11 @@ class Game(ShowBase):
 
     def update(self, task):
         self.sword.set_pos(base.camera.get_pos(render))
+        self.minimap_cam.set_pos(base.camera.get_pos(render))
+        self.minimap_cam.set_z(100)
         h=base.camera.get_h(render)
         self.sword.set_hpr(h, -5,0)
+        self.minimap_cam.set_h(h)
         dt = globalClock.getDt()
         if int(globalClock.get_frame_time()*100) % 8 ==0:
             self.light_1.set_color(Vec3(0.6,0.4,0.2)*random.uniform(0.75, 1.0))
@@ -714,6 +766,7 @@ class Game(ShowBase):
             self.loading.geom.hide()
 
     def start_game(self):
+        self.map_quad.show()
         self.logo.hide()
         self.menu_music.stop()
         self.game_music.play()
@@ -765,6 +818,13 @@ class Game(ShowBase):
         return test1 or test2
 
     def unlock_keys(self):
+        #sanitize pos/rotation
+        if self.hp >1.0:
+            pos=base.camera.get_pos(render)
+            pos=[round(i) for i in pos]
+            base.camera.set_pos(*pos)
+            hpr=base.camera.get_hpr()
+            base.camera.set_hpr(round(hpr.x), -5, 0)
         self.key_lock-=1
         if self.key_lock < 0:
             self.key_lock=0
@@ -851,6 +911,7 @@ class Game(ShowBase):
             s.append(LerpHprInterval(base.camera, 0.2, (h+90,-5,0)))
             s.append(Wait(0.2))
             s.append(Func(self.unlock_keys))
+            s.append(Func(self.clear_dead_zombies))
             s.start()
         else:
             if 'left' in self.current_chart[self.current_chart_node]:
@@ -880,6 +941,7 @@ class Game(ShowBase):
             s.append(LerpHprInterval(base.camera, 0.2, (h-90,-5,0)))
             s.append(Wait(0.2))
             s.append(Func(self.unlock_keys))
+            s.append(Func(self.clear_dead_zombies))
             s.start()
         else:
             if 'right' in self.current_chart[self.current_chart_node]:

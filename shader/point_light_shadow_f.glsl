@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 struct p3d_LightSourceParameters
     {
     vec4 position;
@@ -48,16 +48,16 @@ vec3 getPosition(vec2 uv, float depth)
     return view_pos.xyz;
     }
 
-float soft_shadow_cube(samplerCube tex, vec3 uvw, float z, float bias, float blur)
+float soft_shadow_cube(vec3 uvw, float z, float bias, float blur)
     {
-    float pixel=blur/textureSize(tex, 0).x;
+    float pixel=blur/textureSize(shadowcaster.shadowMap, 0).x;
     //float result=float(texture(tex, uvw).r >= (z * 0.5 + 0.5)+bias);
-    float result =float(texture(tex,uvw+vec3(1.0,0,0)*pixel).r >= (z * 0.5 + 0.5)+bias);
-    result +=float(texture(tex,uvw+vec3(-1.0,0,0)*pixel).r >= (z * 0.5 + 0.5)+bias);
-    result +=float(texture(tex,uvw+vec3(0,1.0,0)*pixel).r >= (z * 0.5 + 0.5)+bias);
-    result +=float(texture(tex,uvw+vec3(0,-1.0,0)*pixel).r >= (z * 0.5 + 0.5)+bias);
-    result +=float(texture(tex,uvw+vec3(0,0,1.0)*pixel).r >= (z * 0.5 + 0.5)+bias);
-    result +=float(texture(tex,uvw+vec3(0,0,-1.0)*pixel).r >= (z * 0.5 + 0.5)+bias);
+    float result =float(texture(shadowcaster.shadowMap,uvw+vec3(1.0,0,0)*pixel).r >= (z * 0.5 + 0.5)+bias);
+    result +=float(texture(shadowcaster.shadowMap,uvw+vec3(-1.0,0,0)*pixel).r >= (z * 0.5 + 0.5)+bias);
+    result +=float(texture(shadowcaster.shadowMap,uvw+vec3(0,1.0,0)*pixel).r >= (z * 0.5 + 0.5)+bias);
+    result +=float(texture(shadowcaster.shadowMap,uvw+vec3(0,-1.0,0)*pixel).r >= (z * 0.5 + 0.5)+bias);
+    result +=float(texture(shadowcaster.shadowMap,uvw+vec3(0,0,1.0)*pixel).r >= (z * 0.5 + 0.5)+bias);
+    result +=float(texture(shadowcaster.shadowMap,uvw+vec3(0,0,-1.0)*pixel).r >= (z * 0.5 + 0.5)+bias);
     return result/6.0;
     }
 
@@ -118,7 +118,7 @@ void main()
         float shadow= float(texture(shadowcaster.shadowMap, shadow_uv.xyz).r >= (ldist * 0.5 + 0.5)+bias);
     #endif
     #ifndef DISABLE_SOFTSHADOW
-        float shadow=soft_shadow_cube( shadowcaster.shadowMap,  shadow_uv.xyz,  ldist,  bias,  70.0*(1.0-attenuation));
+        float shadow=soft_shadow_cube(shadow_uv.xyz,  ldist,  bias,  70.0*(1.0-attenuation));
     #endif
     final*=shadow;
 

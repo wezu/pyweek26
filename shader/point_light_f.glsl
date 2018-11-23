@@ -1,5 +1,5 @@
 //GLSL
-#version 140
+#version 130
 struct p3d_LightSourceParameters
     {
     vec4 position;
