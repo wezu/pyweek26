@@ -475,9 +475,10 @@ class Game(ShowBase):
         self.map_quad = pixel2d.attach_new_node(cm.generate())
         self.map_quad.set_texture(self.minmap_tex)
         self.map_quad.set_pos(0, 0, -256)
-        self.map_quad.set_shader(Shader.load(Shader.SLGLSL, 'shader/map_v.glsl', 'shader/map_f.glsl'), 1)
-        self.map_quad.set_shader_input('map_tex', loader.load_texture('texture/map.png'))
-        self.map_quad.set_transparency(TransparencyAttrib.M_alpha, 1)
+        if not self.potato_mode:
+            self.map_quad.set_shader(Shader.load(Shader.SLGLSL, 'shader/map_v.glsl', 'shader/map_f.glsl'), 1)
+            self.map_quad.set_shader_input('map_tex', loader.load_texture('texture/map.png'))
+            self.map_quad.set_transparency(TransparencyAttrib.M_alpha, 1)
         self.map_quad.hide()
 
     def game_over(self):
@@ -690,14 +691,14 @@ class Game(ShowBase):
             #point light, attached to camera
             self.light_1 = SphereLight(color=(0.6,0.4,0.2), pos=(0,0,3), radius=25.0, shadow_size=0, shadow_bias=0.0035)
             self.light_1.attach_to(base.camera, Point3(-2.0, 2.0, 0.5))
-            taskMgr.add(self.update, 'main_update_tsk', sort=-150)
+            #taskMgr.add(self.update, 'main_update_tsk', sort=-150)
 
     def use_shadows(self):
         if not self.potato_mode:
             #point light, attached to camera
             self.light_1 = SphereLight(color=(0.6,0.4,0.2), pos=(0,0,3), radius=25.0, shadow_size=512, shadow_bias=0.0035)
             self.light_1.attach_to(base.camera, Point3(-2.0, 2.0, 0.5))
-            taskMgr.add(self.update, 'main_update_tsk', sort=-150)
+            #taskMgr.add(self.update, 'main_update_tsk', sort=-150)
 
     def quality_minimal(self):
         if not self.potato_mode:
@@ -722,8 +723,9 @@ class Game(ShowBase):
         self.sword.set_hpr(h, -5,0)
         self.minimap_cam.set_h(h)
         dt = globalClock.getDt()
-        if int(globalClock.get_frame_time()*100) % 8 ==0:
-            self.light_1.set_color(Vec3(0.6,0.4,0.2)*random.uniform(0.75, 1.0))
+        if not self.potato_mode:
+            if int(globalClock.get_frame_time()*100) % 8 ==0:
+                self.light_1.set_color(Vec3(0.6,0.4,0.2)*random.uniform(0.75, 1.0))
         return task.again
 
     def set_bias(self, amount):
@@ -766,6 +768,7 @@ class Game(ShowBase):
             self.loading.geom.hide()
 
     def start_game(self):
+        taskMgr.add(self.update, 'main_update_tsk', sort=-150)
         self.map_quad.show()
         self.logo.hide()
         self.menu_music.stop()
